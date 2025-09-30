@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MyCollegePantry</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1 class="brand">MyCollegePantry</h1>
+    <nav class="top-actions">
+      <button class="btn ghost" id="signinBtn">Sign in</button>
+      <button class="btn solid" id="signupBtn">Sign up</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="diary" role="tab">Diary</button>
+      <button class="tab" data-tab="pantry" role="tab">Pantry</button>
+      <button class="tab" data-tab="discover" role="tab">Discover</button>
+      <button class="tab" data-tab="profile" role="tab">Profile</button>
+    </div>
+
+    <section id="diary" class="view is-active" role="tabpanel">
+      <div class="row space-between center">
+        <h2>Today</h2>
+        <div class="progress">
+          <div class="bar" style="width: 40%"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row gap">
+          <input class="input flex-1" placeholder="Search food..." />
+          <button class="btn solid">Add</button>
+        </div>
+      </div>
+      <ul class="list">
+        <li class="list-item">Chicken breast — 200 g · 330 kcal</li>
+        <li class="list-item">Rice — 150 g · 200 kcal</li>
+      </ul>
+    </section>
+
+    <section id="pantry" class="view" role="tabpanel">
+      <div class="row gap">
+        <input class="input flex-1" placeholder="Add item e.g., rice 2 cup" />
+        <button class="btn solid">Add</button>
+      </div>
+      <div class="grid cards">
+        <div class="card">
+          <div class="card-title">Rice</div>
+          <div class="muted">2 cup</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Tuna</div>
+          <div class="muted">3 can</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="discover" class="view" role="tabpanel">
+      <div class="card">
+        <div class="row gap">
+          <label><input type="checkbox" /> Use my pantry</label>
+          <select class="input"><option>Any diet</option><option>Vegetarian</option></select>
+          <select class="input"><option>≤ 20 min</option><option>≤ 30 min</option></select>
+          <button class="btn solid">Suggest meals</button>
+        </div>
+      </div>
+      <div class="grid cards">
+        <article class="card">
+          <div class="card-title">Chicken Rice Bowl</div>
+          <p class="muted">720 kcal · P52 C86 F16</p>
+          <button class="btn ghost">Save</button>
+          <button class="btn solid">Add to Today</button>
+        </article>
+      </div>
+    </section>
+
+    <section id="profile" class="view" role="tabpanel">
+      <div class="card grid two">
+        <label>Calories <input class="input" type="number" placeholder="2000" /></label>
+        <label>Protein (g) <input class="input" type="number" placeholder="130" /></label>
+        <label>Carbs (g) <input class="input" type="number" placeholder="220" /></label>
+        <label>Fats (g) <input class="input" type="number" placeholder="60" /></label>
+        <button class="btn solid" style="grid-column: 1 / -1;">Save targets</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card">
+      <div class="row space-between center">
+        <h3>Modal title</h3>
+        <button class="icon-btn" data-close>×</button>
+      </div>
+      <div class="modal-body">Content here</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
