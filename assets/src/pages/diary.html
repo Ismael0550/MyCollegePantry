@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <style>
+        .container{
+            display: grid;
+        }
+        .wrapper{
+            justify-self: end;
+        }
+    </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4h10l1 3H6l1-3zm-1 5h12l-1.2 10.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 9z"/></svg>
+        <div>
+          <h1>MyCollegePantry</h1>
+          <p class="kicker">Calories, pantry, meal ideas</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="chat.html">Chat with AI</a>
+        <a href="diary.html">Food Diary</a>
+        <a href="pantry.html">Pantry</a>
+      </nav>
+    </aside>
+    <main class="content">
+      <header class="header">
+        <button class="menu-btn" data-menu>☰ Menu</button>
+        <div class="row">
+          <div class="progress"><div class="bar" style="width:40%"></div></div>
+        </div>
+      </header>
+      <div class="container">
+        <h1>Food Diary</h1>
+        <p class="muted">Log your meals and track your calorie intake.</p>
+
+                  <p>Total Calories: 1350 kcal</p>
+        <div class="wrapper">
+            <button class="btn solid">Add Meal</button>
+                <script>
+                    // JavaScript to handle adding meals can be added here
+                    document.querySelector('.btn.solid').addEventListener('click', function() {
+                    alert('Add Meal functionality to be implemented.');
+                });
+        </script>
+        </div>
+        <div class="card">
+          <h2></h2>
+          <ul class="list">
+            <li class="list-item">Breakfast: Oatmeal with fruits - 300 kcal</li>
+            <li class="list-item">Lunch: Grilled chicken salad - 450 kcal</li>
+            <li class="list-item">Dinner: Spaghetti with marinara sauce - 600 kcal</li>
+          </ul>
+          <p>Total Calories: 1350 kcal</p>
+
+
+        </div>
+        <div class="card">
+          <h2>Lunch</h2>
+          <ul class="list">
+            <li class="list-item">Protein: 70 g</li>
+            <li class="list-item">Carbs: 150 g</li>
+            <li class="list-item">Fats: 40 g</li>
+          </ul>
+        
+        </div>
+    </main>
+  </div>
+  <script src="../../js/app.js"></script>
+</body>
+</html>
