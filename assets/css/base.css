@@ -16,11 +16,25 @@ body{
 }
 
 /* Layout */
-.layout{display:grid; grid-template-columns: var(--sidebar-w) 1fr; min-height:100dvh}
+.layout{
+  display:grid; 
+  grid-template-columns: var(--sidebar-w) 1fr; 
+  min-height:100dvh;
+  transition: grid-template-columns .25s ease;
+}
+.layout.sidebar-hidden{
+  grid-template-columns: 0 1fr;
+}
 .sidebar{
   position:sticky; top:0; height:100dvh; padding:16px; border-right:1px solid var(--border);
   background: color-mix(in hsl, var(--elev) 85%, transparent);
   backdrop-filter: blur(6px); box-shadow: var(--shadow-sm);
+  /* Sidebar hidden by default, overridden by .open */
+  /* transform: translateX(-100%); */
+  transition: transform .2s ease;
+}
+.sidebar.open {
+  transform: translateX(0);
 }
 .brand{display:flex; align-items:center; gap:10px; margin-bottom:12px}
 .brand h1{font-size:18px; margin:0}
@@ -32,18 +46,22 @@ body{
   color:var(--muted); text-decoration:none; border:1px solid transparent;
   transition: background .15s, color .15s, transform .1s, border-color .15s;
 }
+
 .nav a:hover{background:var(--elev-2); color:var(--text)}
 .nav a.active{
   color:#071712; background: linear-gradient(180deg, color-mix(in hsl, var(--brand) 90%, white 10%), var(--brand));
   border-color: transparent; transform: translateY(-1px);
 }
 
-.content{padding:22px}
+.content{
+  padding:22px
+  
+}
 .header{
   display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;
 }
 .header .menu-btn{
-  display:none; border:1px solid var(--border); background:var(--elev-2); color:var(--text);
+  display:inline-block; border:1px solid var(--border); background:var(--elev-2); color:var(--text);
   padding:8px 10px; border-radius:10px; cursor:pointer;
 }
 
@@ -76,4 +94,23 @@ body{
   body.sidebar-open::before{
     content:""; position:fixed; inset:0; background:rgba(0,0,0,.5); backdrop-filter: blur(2px);
   }
+}
+
+
+ /* body.sidebar-open::before {
+    content: "";
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(2px);
+  } */
+
+  .layout.is-closed {
+  grid-template-columns: 0 1fr;
+}
+
+/* make hidden sidebar inert */
+.layout.is-closed .sidebar {
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
 }
