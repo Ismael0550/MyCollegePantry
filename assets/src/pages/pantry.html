@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MyCollegePantry • Pantry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/assets/css/base.css" />
+  <!-- Firebase SDKs -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b0c10; --elev:#14161c; --text:#eaf0f5; --muted:#a6b0bf;
+      --brand:#7cf6d6; --accent:#7db2ff; --radius:14px; --gap:12px; --border:#242833;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+    header{position:sticky;top:0;background:linear-gradient(#0b0c10,#0e1016);border-bottom:1px solid var(--border);padding:10px 16px;z-index:10}
+    header .bar{display:grid;grid-template-columns: 1fr auto auto auto;gap:var(--gap);align-items:center}
+    .search{display:flex;gap:8px}
+    .search input,.search select{background:#0e1016;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:10px}
+    .btn{background:var(--brand);color:#041410;border:0;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer}
+    .btn.secondary{background:#203042;color:var(--text)}
+    .btn.danger{background:#40222a;color:#ffd7de}
+    main{padding:16px}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap);margin-bottom:16px}
+    .card{background:var(--elev);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+    .grid{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:var(--gap)}
+    .item{display:grid;gap:8px}
+    .item h3{margin:0;font-size:16px}
+    .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+    .chip{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:4px 8px;color:var(--muted)}
+    .muted{color:var(--muted)}
+    .qty{display:flex;gap:6px;align-items:center}
+    .qty button{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:#0e1016;color:var(--text);cursor:pointer}
+    .low{outline:2px solid #ffb703}
+    .expiring{outline:2px solid #ff5f5f}
+    dialog::backdrop{background:rgba(0,0,0,.6)}
+    dialog{border:1px solid var(--border);border-radius:16px;background:#0e1016;color:var(--text);padding:0;max-width:560px;width:100%}
+    .dlg-head{padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+    .dlg-body{padding:16px;display:grid;gap:12px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    input,select,textarea{background:#0b0e14;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px}
+    .toolbar{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);padding:12px 16px}
+    @media (max-width: 1100px){
+      .grid{grid-template-columns:repeat(2,minmax(220px,1fr))}
+      .stats{grid-template-columns:repeat(2,1fr)}
+    }
+    @media (max-width: 600px){
+      header .bar{grid-template-columns:1fr auto}
+      .grid{grid-template-columns:1fr}
+      .stats{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="search">
+        <input id="q" placeholder="Search name or notes…" />
+        <select id="filterCategory">
+          <option value="">All categories</option>
+          <option>protein</option><option>carb</option><option>veg</option><option>fruit</option><option>fat</option><option>spice</option>
+        </select>
+        <select id="filterLocation">
+          <option value="">Any location</option>
+          <option>pantry</option><option>fridge</option><option>freezer</option>
+        </select>
+        <select id="sortBy">
+          <option value="expiresAsc">Soonest to expire</option>
+          <option value="nameAsc">Name A→Z</option>
+          <option value="qtyAsc">Low stock first</option>
+          <option value="createdDesc">Recently added</option>
+        </select>
+      </div>
+      <button id="addBtn" class="btn">Add item</button>
+      <button id="deleteSelectedBtn" class="btn danger">Delete selected</button>
+      <button id="signOutBtn" class="btn secondary">Sign out</button>
+    </div>
+  </header>
+      <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4h10l1 3H6l1-3zm-1 5h12l-1.2 10.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 9z"/></svg>
+        <div>
+          <h1>MyCollegePantry</h1>
+          <p class="kicker">Calories, pantry, meal ideas</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="chat.html">Chat with AI</a>
+        <a href="diary.html">Food Diary</a>
+        <a href="pantry.html">Pantry</a>
+      </nav>
+    </aside>
+       <main class="content">
+      <header class="header">
+        <button data-menu class="menu-btn">☰ Menu</button>
+        <div class="row">
+          <div class="progress"><div class="bar" style="width:40%"></div></div>
+        </div>
+        <script src="../../js/app.js"></script>
+      </header>
+  <main>
+    <section class="stats">
+      <div class="card"><div class="muted">Total items</div><h2 id="statTotal">0</h2></div>
+      <div class="card"><div class="muted">Low stock</div><h2 id="statLow">0</h2></div>
+      <div class="card"><div class="muted">Expiring ≤ 7 days</div><h2 id="statExp">0</h2></div>
+      <div class="card"><div class="muted">Out of stock</div><h2 id="statZero">0</h2></div>
+    </section>
+
+    <section id="items" class="grid"></section>
+  </main>
+
+  <!-- Add/Edit dialog -->
+  <dialog id="itemDlg">
+    <form id="itemForm" method="dialog">
+      <div class="dlg-head">
+        <h3 id="dlgTitle">Add item</h3>
+        <button type="button" id="closeDlg" class="btn secondary">Close</button>
+      </div>
+      <div class="dlg-body">
+        <div class="grid2">
+          <label> Name
+            <input name="name" id="f_name" required maxlength="60" />
+          </label>
+          <label> Category
+            <select name="category" id="f_category">
+              <option>protein</option><option>carb</option><option>veg</option><option>fruit</option><option>fat</option><option>spice</option><option>other</option>
+            </select>
+          </label>
+          <label> Quantity
+            <input type="number" min="0" step="1" name="qty" id="f_qty" value="1" required />
+          </label>
+          <label> Unit
+            <input name="unit" id="f_unit" placeholder="pcs, oz, lb, g, ml…" />
+          </label>
+          <label> Location
+            <select name="location" id="f_location">
+              <option>pantry</option><option>fridge</option><option>freezer</option>
+            </select>
+          </label>
+          <label> Expires on
+            <input type="date" name="expiresOn" id="f_expiresOn" />
+          </label>
+        </div>
+        <label> Notes
+          <textarea name="notes" id="f_notes" rows="3" placeholder="Brand, flavor, anything useful"></textarea>
+        </label>
+      </div>
+      <div class="toolbar">
+        <button type="submit" class="btn">Save</button>
+      </div>
+      <input type="hidden" id="f_id" />
+    </form>
+  </dialog>
+
+  <script>
+    // 1) Firebase boot
+    const firebaseConfig = {
+      // TODO: replace with your actual config
+      apiKey: "YOUR_KEY",
+      authDomain: "YOUR_DOMAIN",
+      projectId: "YOUR_PROJECT_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // 2) Simple auth guard (adjust for your app flow)
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        // window.location.href = "/login.html"; // uncomment when you have a login page
+        console.warn("No user; using anon for dev");
+        auth.signInAnonymously().catch(console.error);
+      }
+    });
+
+    // 3) UI elements
+    const listEl = document.getElementById('items');
+    const dlg = document.getElementById('itemDlg');
+    const form = document.getElementById('itemForm');
+    const addBtn = document.getElementById('addBtn');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const closeDlg = document.getElementById('closeDlg');
+    const statTotal = document.getElementById('statTotal');
+    const statLow = document.getElementById('statLow');
+    const statExp = document.getElementById('statExp');
+    const statZero = document.getElementById('statZero');
+    const q = document.getElementById('q');
+    const filterCategory = document.getElementById('filterCategory');
+    const filterLocation = document.getElementById('filterLocation');
+    const sortBy = document.getElementById('sortBy');
+
+    // 4) Add/edit dialog wiring
+    addBtn.onclick = () => openDialog();
+    closeDlg.onclick = () => dlg.close();
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const uid = (auth.currentUser && auth.currentUser.uid) || null;
+      const docId = document.getElementById('f_id').value || null;
+      const data = {
+        name: document.getElementById('f_name').value.trim(),
+        category: document.getElementById('f_category').value,
+        qty: Number(document.getElementById('f_qty').value || 0),
+        unit: document.getElementById('f_unit').value.trim(),
+        location: document.getElementById('f_location').value,
+        expiresOn: document.getElementById('f_expiresOn').value || null,
+        notes: document.getElementById('f_notes').value.trim(),
+        userId: uid,
+        updatedAt: Date.now(),
+      };
+      if (!docId) {
+        data.createdAt = Date.now();
+        await db.collection('pantryItems').add(data);
+      } else {
+        await db.collection('pantryItems').doc(docId).update(data);
+      }
+      dlg.close();
+      form.reset();
+    };
+
+    function openDialog(item){
+      document.getElementById('dlgTitle').textContent = item ? 'Edit item' : 'Add item';
+      ['f_id','f_name','f_category','f_qty','f_unit','f_location','f_expiresOn','f_notes'].forEach(id=>{
+        const el = document.getElementById(id);
+        el.value = item ? (id==='f_id'? item.id :
+          id==='f_name'? item.name :
+          id==='f_category'? item.category :
+          id==='f_qty'? item.qty :
+          id==='f_unit'? item.unit :
+          id==='f_location'? item.location :
+          id==='f_expiresOn'? (item.expiresOn || '') :
+          item.notes || '') : (id==='f_qty'? 1 : '');
+      });
+      dlg.showModal();
+    }
+
+    // 5) Live query + client-side filtering/sorting
+    let allItems = [];
+    auth.onAuthStateChanged(user => {
+      if (!user) return;
+      db.collection('pantryItems')
+        .where('userId','in',[user.uid, null]) // include anon/dev entries if any
+        .orderBy('createdAt','desc')
+        .onSnapshot(snap => {
+          allItems = snap.docs.map(d => ({id:d.id, ...d.data()}));
+          render();
+        });
+    });
+
+    // Filters/sorts
+    [q, filterCategory, filterLocation, sortBy].forEach(el => el.addEventListener('input', render));
+
+    function render(){
+      const term = q.value.trim().toLowerCase();
+      const now = new Date();
+      const soon = new Date(Date.now() + 7*24*60*60*1000);
+
+      let items = allItems.filter(it => {
+        if (filterCategory.value && it.category !== filterCategory.value) return false;
+        if (filterLocation.value && it.location !== filterLocation.value) return false;
+        if (term && !(`${it.name} ${it.notes||''}`.toLowerCase().includes(term))) return false;
+        return true;
+      });
+
+      // sort
+      items.sort((a,b)=>{
+        const mode = sortBy.value;
+        if (mode === 'nameAsc') return (a.name||'').localeCompare(b.name||'');
+        if (mode === 'qtyAsc') return (a.qty||0) - (b.qty||0);
+        if (mode === 'createdDesc') return (b.createdAt||0) - (a.createdAt||0);
+        // expiresAsc default
+        const da = a.expiresOn ? new Date(a.expiresOn).getTime() : Infinity;
+        const dbb = b.expiresOn ? new Date(b.expiresOn).getTime() : Infinity;
+        return da - dbb;
+      });
+
+      // stats
+      const low = items.filter(i => i.qty > 0 && i.qty <= 1).length;
+      const zero = items.filter(i => (i.qty||0) === 0).length;
+      const exp = items.filter(i => i.expiresOn && new Date(i.expiresOn) <= soon).length;
+      statTotal.textContent = items.length;
+      statLow.textContent = low;
+      statZero.textContent = zero;
+      statExp.textContent = exp;
+
+      // paint
+      listEl.innerHTML = '';
+      for (const it of items){
+        const expires = it.expiresOn ? new Date(it.expiresOn) : null;
+        const flags = [
+          (it.qty||0) === 0 ? 'low' : '',
+          (it.qty||0) <= 1 ? 'low' : '',
+          (expires && expires <= soon) ? 'expiring' : ''
+        ].filter(Boolean).join(' ');
+        const el = document.createElement('article');
+        el.className = `card item ${flags}`;
+        el.innerHTML = `
+          <div class="row">
+            <h3>${escapeHtml(it.name || 'Unnamed')}</h3>
+            <label class="chip"><input type="checkbox" data-id="${it.id}" class="sel"> Select</label>
+          </div>
+          <div class="row">
+            <div class="qty">
+              <button data-act="dec" data-id="${it.id}">−</button>
+              <strong>${it.qty || 0}</strong>
+              <button data-act="inc" data-id="${it.id}">+</button>
+              <span class="muted">${it.unit || ''}</span>
+            </div>
+            <span class="chip">${it.category || 'other'}</span>
+            <span class="chip">${it.location || 'pantry'}</span>
+          </div>
+          <div class="row">
+            <span class="muted">${expires ? 'Expires '+expires.toLocaleDateString() : 'No date'}</span>
+            <span class="muted">${escapeHtml(it.notes || '')}</span>
+          </div>
+          <div class="row">
+            <button class="btn secondary" data-act="edit" data-id="${it.id}">Edit</button>
+            <button class="btn danger" data-act="del" data-id="${it.id}">Delete</button>
+          </div>
+        `;
+        listEl.appendChild(el);
+      }
+
+      // delegate actions
+      listEl.onclick = async (e) => {
+        const id = e.target.getAttribute('data-id');
+        const act = e.target.getAttribute('data-act');
+        if (!id || !act) return;
+
+        if (act === 'inc') {
+          const ref = db.collection('pantryItems').doc(id);
+          await db.runTransaction(async tx => {
+            const snap = await tx.get(ref);
+            const qty = (snap.data()?.qty || 0) + 1;
+            tx.update(ref, { qty, updatedAt: Date.now() });
+          });
+        } else if (act === 'dec') {
+          const ref = db.collection('pantryItems').doc(id);
+          await db.runTransaction(async tx => {
+            const snap = await tx.get(ref);
+            const qty = Math.max(0, (snap.data()?.qty || 0) - 1);
+            tx.update(ref, { qty, updatedAt: Date.now() });
+          });
+        } else if (act === 'edit') {
+          const it = allItems.find(x => x.id === id);
+          openDialog(it);
+        } else if (act === 'del') {
+          if (confirm('Delete this item?')) await db.collection('pantryItems').doc(id).delete();
+        }
+      };
+    }
+
+    // bulk delete
+    deleteSelectedBtn.onclick = async () => {
+      const ids = [...document.querySelectorAll('.sel:checked')].map(cb => cb.dataset.id);
+      if (!ids.length) return;
+      if (!confirm(`Delete ${ids.length} item(s)?`)) return;
+      const batch = db.batch();
+      ids.forEach(id => batch.delete(db.collection('pantryItems').doc(id)));
+      await batch.commit();
+    };
+
+    // utilities
+    function escapeHtml(s){ return s?.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])) || '' }
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MyCollegePantry • Chat</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/assets/css/base.css" />
+<style>
+:root{
+  --bg:#0b0c10; --bg2:#0e1016; --elev:#14161c; --text:#eaf0f5; --muted:#a6b0bf;
+  --border:#242833; --brand:#7cf6d6; --accent:#7db2ff; --radius:14px; --gap:12px;
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
+.app{display:grid;grid-template-columns:260px 1fr 320px;height:100dvh}
+.sidebar2{border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column}
+.sidebar2 header{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:700}
+.chats{overflow:auto;padding:8px}
+.chat-row{padding:10px;border:1px solid var(--border);border-radius:12px;margin:8px 6px;background:#0b0e14;cursor:pointer}
+.chat-row.active{outline:2px solid var(--brand)}
+.main{display:grid;grid-template-rows:auto 1fr auto}
+.main header{padding:12px 14px;border-bottom:1px solid var(--border)}
+.thread{overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{display:grid;gap:8px;max-width:900px}
+.msg .meta{font-size:12px;color:var(--muted)}
+.msg.user{align-self:flex-end}
+.bubble{border:1px solid var(--border);border-radius:16px;padding:12px;background:var(--elev)}
+.msg.user .bubble{background:#0b0e14}
+.tool{font-size:12px;color:var(--muted);background:#0b0e14;border:1px dashed var(--border)}
+.msg-actions{display:flex;gap:8px}
+.btn{border:1px solid var(--border);background:#0e1016;color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
+.btn.primary{background:var(--brand);color:#041410;border:0}
+.input{border-top:1px solid var(--border);padding:10px;background:var(--bg2)}
+.input form{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+textarea{resize:none;min-height:44px;max-height:180px;padding:12px;border:1px solid var(--border);border-radius:12px;background:#0b0e14;color:var(--text)}
+.hints{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.hint{border:1px solid var(--border);padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer;background:#0b0e14;color:var(--muted)}
+.right{border-left:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column}
+.right header{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:700}
+.panel{padding:12px;display:grid;gap:12px}
+.kv{display:flex;justify-content:space-between;color:var(--muted);font-size:14px}
+.list{display:grid;gap:8px}
+.item{display:flex;justify-content:space-between;border:1px solid var(--border);border-radius:10px;padding:8px;background:#0b0e14}
+.badge{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--muted)}
+.typing{width:42px;height:12px;border-radius:999px;background:linear-gradient(90deg,#222,#333 50%,#222);background-size:200% 100%;animation:shimmer 1s linear infinite}
+@keyframes shimmer{0%{background-position:0 0}100%{background-position:200% 0}}
+@media(max-width:1100px){.app{grid-template-columns:0 1fr 320px}}
+@media(max-width:800px){.app{grid-template-columns:0 1fr 0}}
+</style>
+</head>
+<body>
+      <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4h10l1 3H6l1-3zm-1 5h12l-1.2 10.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 9z"/></svg>
+        <div>
+          <h1>MyCollegePantry</h1>
+          <p class="kicker">Calories, pantry, meal ideas</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="chat.html">Chat with AI</a>
+        <a href="diary.html">Food Diary</a>
+        <a href="pantry.html">Pantry</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <header class="header">
+        <button data-menu class="menu-btn">☰ Menu</button>
+        <div class="row">
+          <div class="progress"><div class="bar" style="width:40%"></div></div>
+        </div>
+        <script src="../../js/app.js"></script>
+      </header>
+<div class="app">
+  <aside class="sidebar2">
+    <header>Conversations</header>
+    <div class="chats" id="chatList"></div>
+    <div style="padding:8px;">
+      <button class="btn primary" id="newChatBtn">New chat</button>
+    </div>
+  </aside>
+
+  <section class="main">
+    <header id="chatTitle">New chat</header>
+    <div class="thread" id="thread"></div>
+    <div class="input">
+      <form id="composer">
+        <textarea id="prompt" placeholder="Ask for recipes, swaps, or a meal plan…"></textarea>
+        <button class="btn primary" id="sendBtn" type="submit">Send</button>
+      </form>
+      <div class="hints" id="hints">
+        <span class="hint">Use only what’s expiring this week</span>
+        <span class="hint">400-cal high-protein lunch</span>
+        <span class="hint">Gluten-free dinner with chicken</span>
+        <span class="hint">Make a shopping list for 3 dinners</span>
+      </div>
+    </div>
+  </section>
+
+  <aside class="right">
+    <header>Context</header>
+    <div class="panel">
+      <div class="kv"><span>Items total</span><strong id="ctxItems">0</strong></div>
+      <div class="kv"><span>Expiring ≤ 7d</span><strong id="ctxSoon">0</strong></div>
+      <div class="kv"><span>Calories today</span><strong id="ctxCals">0</strong></div>
+    </div>
+    <div class="panel">
+      <div style="font-weight:600">Expiring soon</div>
+      <div class="list" id="ctxExpiring"></div>
+    </div>
+    <div class="panel">
+      <div style="font-weight:600">Quick inserts</div>
+      <div class="list" id="ctxQuick">
+        <!-- populated from pantry (chips you can click to insert) -->
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+/* Fake auth + Firestore stubs: replace with your real init */
+const auth = { currentUser: { uid: 'demo' } };
+
+/* Minimal in-memory store to sketch behavior */
+let state = { chatId: null, chats: [], messages: {}, pantry: [] };
+
+const el = (sel)=>document.querySelector(sel);
+const thread = el('#thread');
+const chatList = el('#chatList');
+
+function addMsg(role, content, extra={}){
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.textContent = role === 'user' ? 'You' : role === 'assistant' ? 'Pantry AI' : 'System';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble' + (role==='tool'?' tool':'');
+  bubble.innerHTML = content;
+  const actions = document.createElement('div');
+  actions.className = 'msg-actions';
+  if (role === 'assistant'){
+    actions.innerHTML = `
+      <button class="btn" data-act="copy">Copy</button>
+      <button class="btn" data-act="saveRecipe">Save recipe</button>
+      <button class="btn" data-act="toPlan">Add to plan</button>
+      <button class="btn" data-act="toList">Shopping list</button>
+      <button class="btn" data-act="retry">Retry</button>
+    `;
+  }
+  msg.append(meta,bubble,actions);
+  thread.appendChild(msg);
+  thread.scrollTop = thread.scrollHeight;
+  return {msg,bubble};
+}
+
+/* Typing indicator */
+function addTyping(){
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  wrap.innerHTML = `<div class="meta">Pantry AI</div><div class="bubble"><div class="typing"></div></div>`;
+  thread.appendChild(wrap);
+  thread.scrollTop = thread.scrollHeight;
+  return wrap;
+}
+
+/* Compose + send */
+el('#composer').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const txt = el('#prompt').value.trim();
+  if (!txt) return;
+  addMsg('user', escapeHtml(txt));
+  el('#prompt').value = '';
+
+  const typing = addTyping();
+
+  // Build context snapshot (summarize pantry for the model)
+  const pantryBrief = summarizePantryForPrompt(state.pantry);
+
+  // Call your backend route that talks to the model
+  // Replace with real endpoint (Cloud Functions / App Engine / whatever)
+  try {
+    const res = await fetch('/api/aiChat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        chatId: state.chatId,
+        userId: auth.currentUser.uid,
+        message: txt,
+        pantryBrief
+      })
+    });
+
+    // Stream response if your endpoint supports it; fallback to text
+    if (res.body && window.ReadableStream){
+      typing.remove();
+      const { bubble } = addMsg('assistant',''); // empty then stream in
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done, chunk;
+      while(({done, value:chunk} = await reader.read()) && !done){
+        bubble.innerHTML += escapeHtml(decoder.decode(chunk));
+        thread.scrollTop = thread.scrollHeight;
+      }
+    } else {
+      const text = await res.text();
+      typing.remove();
+      addMsg('assistant', escapeHtml(text));
+    }
+  } catch(err){
+    typing.remove();
+    addMsg('assistant', `Sorry, the kitchen is on fire: ${escapeHtml(err.message)}`);
+  }
+});
+
+/* Hint chips just drop text into the textarea */
+document.getElementById('hints').addEventListener('click', (e)=>{
+  if (!e.target.classList.contains('hint')) return;
+  el('#prompt').value = e.target.textContent;
+  el('#prompt').focus();
+});
+
+/* Basic conversations list (placeholder) */
+document.getElementById('newChatBtn').addEventListener('click', ()=>{
+  const id = 'chat_'+Date.now();
+  state.chatId = id;
+  state.chats.unshift({id, title:'New chat'});
+  renderChats();
+  el('#chatTitle').textContent = 'New chat';
+  thread.innerHTML = '';
+});
+function renderChats(){
+  chatList.innerHTML = '';
+  for (const c of state.chats){
+    const div = document.createElement('div');
+    div.className = 'chat-row'+(c.id===state.chatId?' active':'');
+    div.textContent = c.title;
+    div.onclick = ()=>{
+      state.chatId = c.id;
+      renderChats();
+      el('#chatTitle').textContent = c.title;
+      // load messages from Firestore here
+      thread.innerHTML = '';
+    };
+    chatList.appendChild(div);
+  }
+}
+
+/* Context panel population (feed from Firestore) */
+function updateContext(){
+  const now = Date.now(), week = 7*24*60*60*1000;
+  const soon = state.pantry.filter(p => p.expiresOn && new Date(p.expiresOn).getTime() - now <= week)
+                           .sort((a,b)=>new Date(a.expiresOn)-new Date(b.expiresOn))
+                           .slice(0,6);
+  document.getElementById('ctxItems').textContent = state.pantry.length;
+  document.getElementById('ctxSoon').textContent = soon.length;
+  document.getElementById('ctxCals').textContent = 0; // plug in from diary later
+  const list = document.getElementById('ctxExpiring');
+  list.innerHTML = '';
+  for (const it of soon){
+    const row = document.createElement('div');
+    row.className='item';
+    row.innerHTML = `<span>${escapeHtml(it.name)} <span class="badge">${escapeHtml(it.location)}</span></span>
+                     <span class="badge">${new Date(it.expiresOn).toLocaleDateString()}</span>`;
+    list.appendChild(row);
+  }
+
+  const quick = document.getElementById('ctxQuick');
+  quick.innerHTML = '';
+  for (const it of state.pantry.slice(0,10)){
+    const chip = document.createElement('div');
+    chip.className = 'item';
+    chip.innerHTML = `<span>${escapeHtml(it.name)}</span><button class="btn" data-ing="${escapeHtml(it.name)}">Use</button>`;
+    chip.querySelector('button').onclick = ()=>{
+      const t = el('#prompt');
+      t.value = (t.value ? t.value + ' ' : '') + it.name;
+      t.focus();
+    };
+    quick.appendChild(chip);
+  }
+}
+
+function summarizePantryForPrompt(items){
+  const top = items.slice(0,40).map(x =>
+    `${x.name} x${x.qty}${x.unit?(' '+x.unit):''}${x.expiresOn?(' exp:'+x.expiresOn):''}`
+  ).join('; ');
+  return `Available: ${top || 'none'}. Prefer items expiring within 7 days. If a recipe needs missing items, produce a compact shopping list. Output steps, time, calories, and macros per serving.`;
+}
+
+function escapeHtml(s){return s?.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))||''}
+
+/* On load: start a chat */
+document.getElementById('newChatBtn').click();
+</script>
+</body>
+</html>
