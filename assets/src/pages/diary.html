@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/diary.css">
+
     <style>
         .container{
             display: grid;
@@ -42,34 +44,76 @@
         <h1>Food Diary</h1>
         <p class="muted">Log your meals and track your calorie intake.</p>
 
-                  <p>Total Calories: 1350 kcal</p>
+                  
         <div class="wrapper">
             <button class="btn solid">Add Meal</button>
                 <script>
                     // JavaScript to handle adding meals can be added here
                     document.querySelector('.btn.solid').addEventListener('click', function() {
-                    alert('Add Meal functionality to be implemented.');
+                      const input = doucument
                 });
         </script>
         </div>
-        <div class="card">
-          <h2></h2>
-          <ul class="list">
-            <li class="list-item">Breakfast: Oatmeal with fruits - 300 kcal</li>
-            <li class="list-item">Lunch: Grilled chicken salad - 450 kcal</li>
-            <li class="list-item">Dinner: Spaghetti with marinara sauce - 600 kcal</li>
-          </ul>
-          <p>Total Calories: 1350 kcal</p>
+<section class="card">
+  <h2>Add to diary</h2>
+  <form id="diaryForm" class="grid">
+    <label>Date
+      <input id="dDate" type="date" required>
+    </label>
+    <label>Meal
+      <select id="dMeal" required>
+        <option value="breakfast">Breakfast</option>
+        <option value="lunch">Lunch</option>
+        <option value="dinner">Dinner</option>
+        <option value="snack">Snack</option>
+      </select>
+    </label>
+    <label>Title
+      <input id="dTitle" placeholder="Chicken & Rice" required>
+    </label>
 
+    <label>Calories
+      <input id="dCal" type="number" min="0" step="1" required>
+    </label>
+    <label>Protein (g)
+      <input id="dPro" type="number" min="0" step="1" required>
+    </label>
+    <label>Carbs (g)
+      <input id="dCar" type="number" min="0" step="1" required>
+    </label>
+    <label>Fat (g)
+      <input id="dFat" type="number" min="0" step="1" required>
+    </label>
 
-        </div>
-        <div class="card">
-          <h2>Lunch</h2>
-          <ul class="list">
-            <li class="list-item">Protein: 70 g</li>
-            <li class="list-item">Carbs: 150 g</li>
-            <li class="list-item">Fats: 40 g</li>
-          </ul>
+    <label class="col-span-2">Notes
+      <input id="dNotes" placeholder="optional">
+    </label>
+
+    <button type="submit">Add meal</button>
+  </form>
+</section>
+
+<section class="card">
+  <header class="row">
+    <h2>Diary for <span id="dayLabel"></span></h2>
+    <input id="picker" type="date">
+  </header>
+
+  <ul id="mealList" class="stack"></ul>
+
+  <div id="totals" class="totals">
+    <strong>Totals:</strong>
+    <span id="tCal">0 kcal</span> ·
+    <span id="tPro">0 g protein</span> ·
+    <span id="tCar">0 g carbs</span> ·
+    <span id="tFat">0 g fat</span>
+  </div>
+</section>
+
+<!-- scripts at the bottom of diary.html, after your layout/scripts -->
+<script type="module" src="/assets/js/firebase-init.js"></script>
+<script type="module" src="/assets/js/diary.js"></script>
+
         
         </div>
     </main>
