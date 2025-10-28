@@ -1,11 +1,18 @@
 // 1) Firebase boot
 const firebaseConfig = {
-    // TODO: replace with your actual config
-    apiKey: "YOUR_KEY",
-    authDomain: "YOUR_DOMAIN",
-    projectId: "YOUR_PROJECT_ID"
+  apiKey: "AIzaSyAgF2KDMbiScAeDsv2NF9GLltQvz-QxAm0",
+  authDomain: "mycollegepantry-f9317.firebaseapp.com",
+  projectId: "mycollegepantry-f9317",
+  storageBucket: "mycollegepantry-f9317.firebasestorage.app",
+  messagingSenderId: "528613552373",
+  appId: "1:528613552373:web:41b8e6770b701f28d7d5bc",
+  measurementId: "G-RXSYTPY9T1"
 };
-firebase.initializeApp(firebaseConfig);
+
+if (!window.firebase?.apps?.length){
+    window.firebase.initializeApp(firebaseConfig);
+}
+
 const auth = window.firebase.auth();
 const db = window.firebase.firestore();
 
