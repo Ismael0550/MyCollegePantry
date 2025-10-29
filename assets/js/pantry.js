@@ -1,29 +1,16 @@
-// 1) Firebase boot
-const firebaseConfig = {
-  apiKey: "AIzaSyAgF2KDMbiScAeDsv2NF9GLltQvz-QxAm0",
-  authDomain: "mycollegepantry-f9317.firebaseapp.com",
-  projectId: "mycollegepantry-f9317",
-  storageBucket: "mycollegepantry-f9317.firebasestorage.app",
-  messagingSenderId: "528613552373",
-  appId: "1:528613552373:web:41b8e6770b701f28d7d5bc",
-  measurementId: "G-RXSYTPY9T1"
+import { auth as _auth, db } from "./firebase-init.js";
+import { onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import {
+  collection, addDoc, doc, updateDoc, deleteDoc,
+  runTransaction, writeBatch, query, where, orderBy, onSnapshot
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+
+const auth = {
+  onAuthStateChanged: (cb) => onAuthStateChanged(_auth, cb),
+  signInAnonymously: () => signInAnonymously(_auth),
+  get currentUser() { return _auth.currentUser; }
 };
-
-if (!window.firebase?.apps?.length){
-    window.firebase.initializeApp(firebaseConfig);
-}
-
-const auth = window.firebase.auth();
-const db = window.firebase.firestore();
-
-// 2) Simple auth guard (adjust for your app flow)
-auth.onAuthStateChanged(user => {
-    if (!user) {
-        // window.location.href = "/login.html"; // uncomment when you have a login page
-        console.warn("No user; using anon for dev");
-        auth.signInAnonymously().catch(console.error);
-    }
-});
 
 // 3) UI elements
 const listEl = document.getElementById('items');
@@ -86,9 +73,9 @@ form.onsubmit = async (e) => {
     };
     if (!docId) {
         data.createdAt = Date.now();
-        await db.collection('pantryItems').add(data);
+        await addDoc(collection(db, 'pantryItems'), data);
     } else {
-        await db.collection('pantryItems').doc(docId).update(data);
+        await updateDoc(doc(db, 'pantryItems', docId), data);
     }
     dlg.close();
     form.reset();
@@ -115,18 +102,20 @@ let allItems = [];
 let unsubscribe = null; // track Firestore listener
 
 
-auth.onAuthStateChanged(user => {
-    if (typeof unsubsribe === 'function'){
-        unsubscribe = null;}  
-    if (!user) return;
-    
-    const qRef = db.collection('pantryItems')
-        .where('userId', 'in', [user.uid]) // include anon/dev entries if any
-        .orderBy('createdAt', 'desc')
-        unsubscribe = qRef.onSnapshot(snap => {
-            allItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            render();
-        });
+onAuthStateChanged(_auth, (user) => {
+  if (typeof unsubscribe === 'function') { unsubscribe(); unsubscribe = null; }
+  if (!user) return;
+
+  const qRef = query(
+    collection(db, 'pantryItems'),
+    where('userId', '==', user.uid)
+    );
+
+
+  unsubscribe = onSnapshot(qRef, (snap) => {
+    allItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  });
 });
 
 // Filters/sorts
@@ -210,17 +199,19 @@ function render() {
         if (!id || !act) return;
 
         if (act === 'inc') {
-            const ref = db.collection('pantryItems').doc(id);
-            await db.runTransaction(async tx => {
+            const ref = doc(db, 'pantryItems', id);
+            await runTransaction(db, async (tx) => {
                 const snap = await tx.get(ref);
                 const qty = (snap.data()?.qty || 0) + 1;
                 tx.update(ref, { qty, updatedAt: Date.now() });
             });
+
         } else if (act === 'dec') {
-            const ref = db.collection('pantryItems').doc(id);
-            await db.runTransaction(async tx => {
+            const ref = doc(db, 'pantryItems', id);
+            await runTransaction(db, async (tx) => {
                 const snap = await tx.get(ref);
-                const qty = Math.max(0, (snap.data()?.qty || 0) - 1);
+                const current = (snap.data()?.qty ?? 0);
+                const qty = Math.max(0, current - 1);
                 tx.update(ref, { qty, updatedAt: Date.now() });
             });
         } else if (act === 'edit') {
@@ -228,7 +219,8 @@ function render() {
             openDialog(it);
         } else if (act === 'del') {
             if (await showConfirm()){
-                await db.collection('pantryItems').doc(id).delete();
+                await deleteDoc(doc(db, 'pantryItems', id));
+
             }
         }
     };
@@ -239,9 +231,10 @@ deleteSelectedBtn.onclick = async () => {
     const ids = [...document.querySelectorAll('.sel:checked')].map(cb => cb.dataset.id);
     if (!ids.length) return;
     if (!(await showConfirm())) return;
-    const batch = db.batch();
-    ids.forEach(id => batch.delete(db.collection('pantryItems').doc(id)));
+    const batch = writeBatch(db);
+    ids.forEach(id => batch.delete(doc(db, 'pantryItems', id)));
     await batch.commit();
+
 };
 
 // utilities
