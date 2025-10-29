@@ -5,6 +5,29 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MyCollegePantry · Home</title>
   <link rel="stylesheet" href="/assets/css/base.css" />
+ 
+<script type="module">
+  import { db } from "/assets/js/firebase-init.js";
+  import { collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  async function testFirestore() {
+    // Write
+    await addDoc(collection(db, "pantryItems"), {
+      name: "Test Beans",
+      qty: 3,
+      unit: "cans"
+    });
+    console.log("Added test item!");
+
+    // Read
+    const snap = await getDocs(collection(db, "pantryItems"));
+    snap.forEach(doc => console.log(doc.id, doc.data()));
+  }
+
+  testFirestore();
+</script>
+
+
 </head>
 <body>
   <div class="layout">
