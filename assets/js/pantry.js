@@ -40,13 +40,38 @@ const q = document.getElementById('q');
 const filterCategory = document.getElementById('filterCategory');
 const filterLocation = document.getElementById('filterLocation');
 const sortBy = document.getElementById('sortBy');
+const confirmDlg    = document.getElementById('confirmDlg'); // confirm delete
+const confirmYes    = document.getElementById('confirmYes');
+const confirmCancel = document.getElementById('confirmCancel');
+const confirmClose  = document.getElementById('confirmClose');
+
+
+function showConfirm() {
+  return new Promise(resolve => {
+    const done = (ans) => { confirmDlg.close(); cleanup(); resolve(ans); };
+    const onYes = () => done(true);
+    const onNo  = () => done(false);
+    const cleanup = () => {
+      confirmYes.removeEventListener('click', onYes);
+      confirmCancel.removeEventListener('click', onNo);
+      confirmClose.removeEventListener('click', onNo);
+    };
+    confirmYes.addEventListener('click', onYes);
+    confirmCancel.addEventListener('click', onNo);
+    confirmClose.addEventListener('click', onNo);
+    confirmDlg.showModal();
+  });
+}
+
 
 // 4) Add/edit dialog wiring
 addBtn.onclick = () => openDialog();
 closeDlg.onclick = () => dlg.close();
 form.onsubmit = async (e) => {
     e.preventDefault();
-    const uid = (auth.currentUser && auth.currentUser.uid) || null;
+    const user = auth.currentUser;
+    if (!user) {alert('Signing in...'); return;}
+    const uid = user.uid;
     const docId = document.getElementById('f_id').value || null;
     const data = {
         name: document.getElementById('f_name').value.trim(),
@@ -74,25 +99,31 @@ function openDialog(item) {
     ['f_id', 'f_name', 'f_category', 'f_qty', 'f_unit', 'f_location', 'f_expiresOn', 'f_notes'].forEach(id => {
         const el = document.getElementById(id);
         el.value = item ? (id === 'f_id' ? item.id :
-            id === 'f_name' ? item.name :
-                id === 'f_category' ? item.category :
-                    id === 'f_qty' ? item.qty :
-                        id === 'f_unit' ? item.unit :
-                            id === 'f_location' ? item.location :
-                                id === 'f_expiresOn' ? (item.expiresOn || '') :
-                                    item.notes || '') : (id === 'f_qty' ? 1 : '');
+        id === 'f_name' ? item.name :
+        id === 'f_category' ? item.category :
+        id === 'f_qty' ? item.qty :
+        id === 'f_unit' ? item.unit :
+        id === 'f_location' ? item.location :
+        id === 'f_expiresOn' ? (item.expiresOn || '') :
+        item.notes || '') : (id === 'f_qty' ? 1 : '');
     });
     dlg.showModal();
 }
 
 // 5) Live query + client-side filtering/sorting
 let allItems = [];
+let unsubscribe = null; // track Firestore listener
+
+
 auth.onAuthStateChanged(user => {
+    if (typeof unsubsribe === 'function'){
+        unsubscribe = null;}  
     if (!user) return;
-    db.collection('pantryItems')
-        .where('userId', 'in', [user.uid, null]) // include anon/dev entries if any
+    
+    const qRef = db.collection('pantryItems')
+        .where('userId', 'in', [user.uid]) // include anon/dev entries if any
         .orderBy('createdAt', 'desc')
-        .onSnapshot(snap => {
+        unsubscribe = qRef.onSnapshot(snap => {
             allItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             render();
         });
@@ -196,7 +227,9 @@ function render() {
             const it = allItems.find(x => x.id === id);
             openDialog(it);
         } else if (act === 'del') {
-            if (confirm('Delete this item?')) await db.collection('pantryItems').doc(id).delete();
+            if (await showConfirm()){
+                await db.collection('pantryItems').doc(id).delete();
+            }
         }
     };
 }
@@ -205,7 +238,7 @@ function render() {
 deleteSelectedBtn.onclick = async () => {
     const ids = [...document.querySelectorAll('.sel:checked')].map(cb => cb.dataset.id);
     if (!ids.length) return;
-    if (!confirm(`Delete ${ids.length} item(s)?`)) return;
+    if (!(await showConfirm())) return;
     const batch = db.batch();
     ids.forEach(id => batch.delete(db.collection('pantryItems').doc(id)));
     await batch.commit();
