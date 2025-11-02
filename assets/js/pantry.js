@@ -82,6 +82,8 @@ form.onsubmit = async (e) => {
 };
 
 function openDialog(item) {
+  // Use touched to reset per dialog
+    touched = { category:false, unit:false, location:false };
     document.getElementById('dlgTitle').textContent = item ? 'Edit item' : 'Add item';
     ['f_id', 'f_name', 'f_category', 'f_qty', 'f_unit', 'f_location', 'f_expiresOn', 'f_notes'].forEach(id => {
         const el = document.getElementById(id);
@@ -100,6 +102,52 @@ function openDialog(item) {
 // 5) Live query + client-side filtering/sorting
 let allItems = [];
 let unsubscribe = null; // track Firestore listener
+
+// -Autofill-
+
+// 1) Temporary seed list for autofill 
+const DEFAULTS = {
+  "eggs": { category: "protein", unit: "pcs", location: "fridge" },
+  "milk": { category: "protein", unit: "gal", location: "fridge" },
+  "rice": { category: "carb", unit: "lb", location: "pantry" },
+
+// Follow same struture to add more seed items
+
+};
+
+let touched = { category:false, unit:false, location:false };
+function markTouched(which){ touched[which] = true; }
+
+// Apply hints 
+function applyDefaultsSmart(hint){
+  if (!hint) return;
+  const catEl  = document.getElementById('f_category');
+  const unitEl = document.getElementById('f_unit');
+  const locEl  = document.getElementById('f_location');
+
+  if (catEl  && !touched.category && hint.category)  catEl.value  = hint.category;
+  if (unitEl && !touched.unit     && hint.unit)      unitEl.value = hint.unit;
+  if (locEl  && !touched.location && hint.location)  locEl.value  = hint.location;
+}
+
+
+// Autofill when typing a name
+document.getElementById('f_category')?.addEventListener('change', () => markTouched('category'));
+document.getElementById('f_unit')?.addEventListener('change',     () => markTouched('unit'));
+document.getElementById('f_location')?.addEventListener('change', () => markTouched('location'));
+
+// Live autofill
+const nameEl = document.getElementById('f_name');
+nameEl?.addEventListener('input', () => {
+  const key = nameEl.value.trim().toLowerCase();
+  if (!key) return;
+
+  const fromHistory = Array.isArray(allItems)
+    ? allItems.find(it => (it.name || '').trim().toLowerCase() === key)
+    : null;
+
+  applyDefaultsSmart(fromHistory || DEFAULTS[key]);
+});
 
 
 onAuthStateChanged(_auth, (user) => {
