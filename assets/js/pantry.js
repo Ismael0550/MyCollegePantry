@@ -204,6 +204,7 @@ function render() {
   statExp.textContent = exp;
 
   // paint
+  // Add "Fresh" 
   listEl.innerHTML = '';
   for (const it of items) {
     const dLeft = daysUntil(it.expiresOn);
