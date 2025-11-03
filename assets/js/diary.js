@@ -9,6 +9,20 @@ import {
 // helpers
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const toNum = v => Number(v || 0);
+const esc = (s='') => String(s).replace(/[&<>"']/g, c => ({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+}[c]));
+
+function parseIngredients(text) {
+  if (!text) return [];
+  return text.split('\n')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(line => {
+      const [name = '', qty = '', unit = ''] = line.split(',').map(x => x.trim());
+      return { name, qty: Number(qty) || 0, unit };
+    });
+}
 
 // elements
 const form   = document.getElementById("diaryForm");
@@ -33,16 +47,18 @@ function watchDiary(dayISO) {
 
   const q = query(
     collection(db, "diaryMeals"),
-    where("date", "==", dayISO),
-    orderBy("createdAt", "desc")
+    where("date", "==", dayISO)
   );
 
   stopWatching = onSnapshot(q, snap => {
     list.innerHTML = "";
+
+    const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    rows.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+
     const totals = { cal: 0, pro: 0, car: 0, fat: 0 };
 
-    snap.forEach(d => {
-      const m = d.data();
+    for (const m of rows) {
       totals.cal += toNum(m.calories);
       totals.pro += toNum(m.protein);
       totals.car += toNum(m.carbs);
@@ -53,17 +69,39 @@ function watchDiary(dayISO) {
       li.innerHTML = `
         <div class="grow">
           <div class="row">
-            <strong>${m.mealType.toUpperCase()}</strong>
-            <span class="muted">${m.date}</span>
+            <strong>${(m.mealType || '').toUpperCase()}</strong>
+            <span class="muted">${esc(m.date || '')}</span>
           </div>
-          <div>${m.title}</div>
-          <div class="muted">${m.calories} kcal · P ${m.protein} · C ${m.carbs} · F ${m.fat}</div>
-          ${m.notes ? `<div class="muted">"${m.notes}"</div>` : ""}
+
+          <div>${esc(m.title || '')}</div>
+
+          ${Array.isArray(m.ingredients) && m.ingredients.length ? `
+            <details class="muted" style="margin-top:4px;">
+              <summary style="cursor:pointer;">Ingredients (${m.ingredients.length})</summary>
+              <ul style="margin:6px 0 0 14px; padding:0; list-style:disc;">
+                ${m.ingredients.map(i =>
+                  `<li>${esc(i.name || '')} — ${i.qty ?? 0} ${esc(i.unit || '')}</li>`
+                ).join('')}
+              </ul>
+            </details>
+          ` : `
+            <details class="muted" style="margin-top:4px;">
+              <summary style="cursor:pointer;">Ingredients (0)</summary>
+              <div style="margin:6px 0 0 14px;">No ingredients saved for this meal.</div>
+            </details>
+          `}
+
+          <div class="muted" style="margin-top:6px;">
+            ${m.calories} kcal · P ${m.protein} · C ${m.carbs} · F ${m.fat}
+          </div>
+
+          ${m.notes ? `<div class="muted" style="margin-top:4px;">"${esc(m.notes)}"</div>` : ""}
         </div>
-        <button class="danger" data-id="${d.id}">Delete</button>
+
+        <button class="danger" data-id="${m.id}">Delete</button>
       `;
       list.appendChild(li);
-    });
+    }
 
     tCal.textContent = `${totals.cal} kcal`;
     tPro.textContent = `${totals.pro} g protein`;
@@ -71,6 +109,7 @@ function watchDiary(dayISO) {
     tFat.textContent = `${totals.fat} g fat`;
   });
 }
+
 
 watchDiary(initialDay);
 
@@ -90,6 +129,7 @@ form.addEventListener("submit", async e => {
     protein:  toNum(document.getElementById("dPro").value),
     carbs:    toNum(document.getElementById("dCar").value),
     fat:      toNum(document.getElementById("dFat").value),
+    ingredients: parseIngredients(document.getElementById("dIngr")?.value || ""),
     notes:    document.getElementById("dNotes").value.trim(),
     createdAt: serverTimestamp()
     // userId later
