@@ -70,6 +70,20 @@
     </label>
     <label>Title
       <input id="dTitle" placeholder="Chicken & Rice" required>
+      <div id="fatsecret-container">
+  <input 
+    id="fatsecret-input" 
+    type="text" 
+    placeholder="Search for food..."
+  />
+
+  <button id="fatsecret-btn">Search FatSecret</button>
+
+  <div id="fatsecret-results"></div>
+</div>
+<script type="module" src="/assets/js/fatsecret.js"></script>
+<script type="module" src="/assets/js/fatsecret-ui.js"></script>
+
     </label>
     <label>Calories
       <input id="dCal" type="number" min="0" step="1" required>
@@ -108,13 +122,18 @@
     <span id="tFat">0 g fat</span>
   </div>
 </section>
-<div>
-  <input id="fatsecretSearchInput" placeholder="Search a food (e.g. chicken breast)" />
-  <button id="fatsecretSearchButton">Search FatSecret</button>
+<div id="fatsecret-container">
+  <input 
+    id="fatsecret-input" 
+    type="text" 
+    placeholder="Search for food..."
+  />
+
+  <button id="fatsecret-btn">Search FatSecret</button>
+
+  <div id="fatsecret-results"></div>
 </div>
-
-<div id="fatsecretResults"></div>
-
+<script type="module" src="/assets/js/fatsecret.js"></script>
 <script type="module" src="/assets/js/fatsecret-ui.js"></script>
 
 

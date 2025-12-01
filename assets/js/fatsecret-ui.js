@@ -1,63 +1,78 @@
-import { searchFoodFatsecret } from "./fatsecret.js";
-
 console.log("fatsecret-ui.js loaded");
 
-const input = document.getElementById("fatsecretSearchInput");
-const button = document.getElementById("fatsecretSearchButton");
-const resultsDiv = document.getElementById("fatsecretResults");
+// Import the function that actually calls Firebase → FatSecret
+import { searchFoodFatsecret } from "/assets/js/fatsecret.js";
 
-async function handleSearchClick() {
-  const query = input.value.trim();
-  console.log("Sending query to FatSecret:", query);
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("fatsecret-ui DOM ready");
 
-  if (!query) {
-    resultsDiv.textContent = "Type something first.";
+  const input = document.getElementById("fatsecret-input");
+  const btn = document.getElementById("fatsecret-btn");
+  const resultsDiv = document.getElementById("fatsecret-results");
+
+  if (!input || !btn || !resultsDiv) {
+    console.error("FatSecret UI: Missing required elements.");
     return;
   }
 
-  resultsDiv.textContent = "Searching...";
+  btn.addEventListener("click", handleSearchClick);
 
-  try {
-    // 🔥 FIXED — pass a STRING, not an object
-    const res = await searchFoodFatsecret(query);
-    console.log("Raw FatSecret response:", res);
+  async function handleSearchClick() {
+    const query = input.value.trim();
+    console.log("Sending query to FatSecret:", query);
 
-    if (!res || !res.ok || !res.data) {
-      resultsDiv.textContent = "No data from FatSecret.";
+    if (!query) {
+      resultsDiv.textContent = "Please enter a food name.";
       return;
     }
 
-    // FatSecret returns data.foods.food (array)
-    const foods = res.data.foods?.food || [];
+    try {
+      // Call the backend
+      const res = await searchFoodFatsecret(query);
+      console.log("Raw FatSecret response:", res);
 
-    if (!foods.length) {
-      resultsDiv.textContent = "No results found.";
-      return;
+      resultsDiv.innerHTML = ""; // clear old results
+
+      // Safety check
+      if (!res || !res.ok || !res.data) {
+        resultsDiv.textContent = "No data received from FatSecret.";
+        return;
+      }
+
+      // Check for FatSecret-side error
+      if (res.data.error) {
+        console.error("FatSecret reported an error:", res.data.error);
+
+        let msg =
+          res.data.error.message ||
+          res.data.error.error_description ||
+          JSON.stringify(res.data.error);
+
+        resultsDiv.textContent = "FatSecret error: " + msg;
+        return;
+      }
+
+      // Normal success case – extract foods
+      const foods = res.data.foods?.food || [];
+      console.log("Parsed foods:", foods);
+
+      if (foods.length === 0) {
+        resultsDiv.textContent = "No results found.";
+        return;
+      }
+
+      // Render the foods
+      const ul = document.createElement("ul");
+      foods.forEach((food) => {
+        const li = document.createElement("li");
+        li.textContent = `${food.food_name} — ${food.food_description}`;
+        ul.appendChild(li);
+      });
+
+      resultsDiv.appendChild(ul);
+    } catch (err) {
+      console.error("FatSecret search error:", err);
+      resultsDiv.textContent = "Error searching FatSecret. Check console.";
     }
-
-    // Basic list rendering
-    resultsDiv.innerHTML = `
-      <ul>
-        ${foods
-          .map((food) => {
-            const name = food.food_name || "Unknown food";
-            const desc = food.food_description || "";
-            return `
-              <li>
-                <strong>${name}</strong><br>
-                <small>${desc}</small>
-              </li>
-            `;
-          })
-          .join("")}
-      </ul>
-    `;
-  } catch (err) {
-    console.error("FatSecret search error:", err);
-    resultsDiv.textContent = "Error searching FatSecret. Check console.";
   }
-}
-
-if (button && input) {
-  button.addEventListener("click", handleSearchClick);
-}
+});

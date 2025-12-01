@@ -1,3 +1,4 @@
+// assets/js/fatsecret.js
 console.log("fatsecret.js loaded");
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
@@ -15,17 +16,22 @@ const firebaseConfig = {
 
 // Reuse existing app if already initialized somewhere else
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-
 const functions = getFunctions(app);
+
 const fatsecretSearchCallable = httpsCallable(functions, "fatsecretSearch");
 
 // Exported function you can call from anywhere
 export async function searchFoodFatsecret(query) {
-  console.log("searchFoodFatsecret called with:", query);
+  console.log("searchFoodFatsecret called with:", query, "type:", typeof query);
 
-  if (!query || !query.trim()) return null;
+  if (!query || !query.trim()) {
+    throw new Error("Empty query passed into searchFoodFatsecret");
+  }
 
-  const res = await fatsecretSearchCallable({ query });
+  const clean = query.trim();
+
+  const res = await fatsecretSearchCallable({ query: clean });
+
+  // Cloud Function returns: { ok: true, data: <fatsecret JSON> }
   return res.data;
 }
-
