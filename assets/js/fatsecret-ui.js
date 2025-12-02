@@ -1,9 +1,8 @@
+// assets/js/fatsecret-ui.js
 console.log("fatsecret-ui.js loaded");
 
-// Import the function that actually calls Firebase → FatSecret
+// Import the function that actually calls the Fly/FatSecret proxy
 import { searchFoodFatsecret } from "/assets/js/fatsecret.js";
-
-
 
 // Pull just the number after a label like "Calories:", "Fat:", etc.
 function extractNumber(desc, label) {
@@ -20,6 +19,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const resultsDiv = document.getElementById("fatsecret-results");
 
   // diary macro inputs
+  
+  const titleInput = document.getElementById("diary-title");
   const calInput   = document.getElementById("diary-calories");
   const protInput  = document.getElementById("diary-protein");
   const carbsInput = document.getElementById("diary-carbs");
@@ -47,21 +48,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
       resultsDiv.innerHTML = "";
 
-      if (!res || !res.ok || !res.data) {
-        resultsDiv.textContent = "No data from FatSecret.";
-        return;
-      }
-
-      if (res.data.error) {
-        const err = res.data.error;
+      // handle top-level errors first
+      if (!res || res.error) {
+        const err = res.error;
         const msg =
-          err.message || err.error_description || JSON.stringify(err);
+          err?.message || err?.error_description || JSON.stringify(err || {});
         console.error("FatSecret reported an error:", err);
         resultsDiv.textContent = "FatSecret error: " + msg;
         return;
       }
 
-      const foods = res.data.foods?.food || [];
+      // res IS the JSON body: { foods: { food: ... } }
+      const foodsField = res.foods?.food;
+      if (!foodsField) {
+        resultsDiv.textContent = "No results found.";
+        return;
+      }
+
+      const foods = Array.isArray(foodsField) ? foodsField : [foodsField];
       if (!foods.length) {
         resultsDiv.textContent = "No results found.";
         return;
@@ -106,18 +110,34 @@ document.addEventListener("DOMContentLoaded", () => {
         card.appendChild(macrosEl);
         resultsDiv.appendChild(card);
 
-        // HOVER → fill diary macros for this meal
-        const fillFields = () => {
+        // CLICK → fill diary title + macros for this meal
+        card.addEventListener("click", () => {
+          // title
+          if (titleInput) {
+            titleInput.value = food.food_name;
+            console.log("titleInput")
+          }
+          document.getElementById("fatsecret-input").value = food.food_name || "";
+          document.getElementById("dCal").value = calories || "";
+          document.getElementById("dPro").value = protein || "";
+          document.getElementById("dCar").value = carbs  || "";
+          document.getElementById("dFat").value = fat      || "";
+
+          // macros
           if (calInput)   calInput.value   = calories || "";
           if (protInput)  protInput.value  = protein  || "";
           if (carbsInput) carbsInput.value = carbs    || "";
           if (fatInput)   fatInput.value   = fat      || "";
-        };
 
-        card.addEventListener("mouseenter", fillFields);
-        // If you prefer click instead of hover, replace with:
-        // card.addEventListener("click", fillFields);
+
+          // optional: highlight selected card
+          document
+            .querySelectorAll(".fatsecret-card.selected")
+            .forEach(el => el.classList.remove("selected"));
+          card.classList.add("selected");
+        });
       });
+
     } catch (err) {
       console.error("FatSecret search error:", err);
       resultsDiv.textContent = "Error searching FatSecret. Check console.";
@@ -126,3 +146,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   button.addEventListener("click", handleSearchClick);
 });
+//   document.addEventListener("click", () => {
+//   const titleInput = document.getElementById("d]");
+//   const calInput   = document.getElementById("dCal");
+// //   const protInput  = document.getElementById("diary-protein");
+// //   const carbsInput = document.getElementById("diary-carbs");
+// //   const fatInput   = document.getElementById("diary-fat");
+// //   }
