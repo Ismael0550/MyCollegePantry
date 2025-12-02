@@ -1,63 +1,155 @@
-import { searchFoodFatsecret } from "./fatsecret.js";
-
+// assets/js/fatsecret-ui.js
 console.log("fatsecret-ui.js loaded");
 
-const input = document.getElementById("fatsecretSearchInput");
-const button = document.getElementById("fatsecretSearchButton");
-const resultsDiv = document.getElementById("fatsecretResults");
+// Import the function that actually calls the Fly/FatSecret proxy
+import { searchFoodFatsecret } from "/assets/js/fatsecret.js";
 
-async function handleSearchClick() {
-  const query = input.value.trim();
-  console.log("Sending query to FatSecret:", query);
+// Pull just the number after a label like "Calories:", "Fat:", etc.
+function extractNumber(desc, label) {
+  const regex = new RegExp(`${label}:\\s*([0-9.]+)`, "i");
+  const match = desc.match(regex);
+  return match ? match[1] : "";
+}
 
-  if (!query) {
-    resultsDiv.textContent = "Type something first.";
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("fatsecret-ui DOM ready");
+
+  const input      = document.getElementById("fatsecret-input");
+  const button     = document.getElementById("fatsecret-btn");
+  const resultsDiv = document.getElementById("fatsecret-results");
+
+  // diary macro inputs
+  
+  const titleInput = document.getElementById("diary-title");
+  const calInput   = document.getElementById("diary-calories");
+  const protInput  = document.getElementById("diary-protein");
+  const carbsInput = document.getElementById("diary-carbs");
+  const fatInput   = document.getElementById("diary-fat");
+
+  if (!input || !button || !resultsDiv) {
+    console.error("FatSecret UI: missing search elements.");
     return;
   }
 
-  resultsDiv.textContent = "Searching...";
+  async function handleSearchClick() {
+    const query = input.value.trim();
+    console.log("Sending query to FatSecret:", query);
 
-  try {
-    // 🔥 FIXED — pass a STRING, not an object
-    const res = await searchFoodFatsecret(query);
-    console.log("Raw FatSecret response:", res);
-
-    if (!res || !res.ok || !res.data) {
-      resultsDiv.textContent = "No data from FatSecret.";
+    if (!query) {
+      resultsDiv.textContent = "Please enter a food name.";
       return;
     }
 
-    // FatSecret returns data.foods.food (array)
-    const foods = res.data.foods?.food || [];
+    resultsDiv.textContent = "Searching...";
 
-    if (!foods.length) {
-      resultsDiv.textContent = "No results found.";
-      return;
+    try {
+      const res = await searchFoodFatsecret(query);
+      console.log("Raw FatSecret response:", res);
+
+      resultsDiv.innerHTML = "";
+
+      // handle top-level errors first
+      if (!res || res.error) {
+        const err = res.error;
+        const msg =
+          err?.message || err?.error_description || JSON.stringify(err || {});
+        console.error("FatSecret reported an error:", err);
+        resultsDiv.textContent = "FatSecret error: " + msg;
+        return;
+      }
+
+      // res IS the JSON body: { foods: { food: ... } }
+      const foodsField = res.foods?.food;
+      if (!foodsField) {
+        resultsDiv.textContent = "No results found.";
+        return;
+      }
+
+      const foods = Array.isArray(foodsField) ? foodsField : [foodsField];
+      if (!foods.length) {
+        resultsDiv.textContent = "No results found.";
+        return;
+      }
+
+      foods.forEach((food) => {
+        const descText = food.food_description || "";
+
+        // Split into serving + macro text
+        let serving = descText;
+        let macroPart = "";
+        const splitIdx = descText.indexOf(" - ");
+        if (splitIdx !== -1) {
+          serving = descText.slice(0, splitIdx);    // "Per 100g"
+          macroPart = descText.slice(splitIdx + 3); // "Calories: ... | Fat: ..."
+        }
+
+        // Parse macros from description
+        const calories = extractNumber(descText, "Calories");
+        const fat      = extractNumber(descText, "Fat");
+        const carbs    = extractNumber(descText, "Carbs");
+        const protein  = extractNumber(descText, "Protein");
+
+        // Build UI card
+        const card = document.createElement("div");
+        card.classList.add("fatsecret-card");
+
+        const nameEl = document.createElement("div");
+        nameEl.classList.add("fatsecret-name");
+        nameEl.textContent = food.food_name;
+
+        const servingEl = document.createElement("div");
+        servingEl.classList.add("fatsecret-serving");
+        servingEl.textContent = serving;
+
+        const macrosEl = document.createElement("div");
+        macrosEl.classList.add("fatsecret-macros");
+        macrosEl.textContent = macroPart || descText;
+
+        card.appendChild(nameEl);
+        card.appendChild(servingEl);
+        card.appendChild(macrosEl);
+        resultsDiv.appendChild(card);
+
+        // CLICK → fill diary title + macros for this meal
+        card.addEventListener("click", () => {
+          // title
+          if (titleInput) {
+            titleInput.value = food.food_name;
+            console.log("titleInput")
+          }
+          document.getElementById("fatsecret-input").value = food.food_name || "";
+          document.getElementById("dCal").value = calories || "";
+          document.getElementById("dPro").value = protein || "";
+          document.getElementById("dCar").value = carbs  || "";
+          document.getElementById("dFat").value = fat      || "";
+
+          // macros
+          if (calInput)   calInput.value   = calories || "";
+          if (protInput)  protInput.value  = protein  || "";
+          if (carbsInput) carbsInput.value = carbs    || "";
+          if (fatInput)   fatInput.value   = fat      || "";
+
+
+          // optional: highlight selected card
+          document
+            .querySelectorAll(".fatsecret-card.selected")
+            .forEach(el => el.classList.remove("selected"));
+          card.classList.add("selected");
+        });
+      });
+
+    } catch (err) {
+      console.error("FatSecret search error:", err);
+      resultsDiv.textContent = "Error searching FatSecret. Check console.";
     }
-
-    // Basic list rendering
-    resultsDiv.innerHTML = `
-      <ul>
-        ${foods
-          .map((food) => {
-            const name = food.food_name || "Unknown food";
-            const desc = food.food_description || "";
-            return `
-              <li>
-                <strong>${name}</strong><br>
-                <small>${desc}</small>
-              </li>
-            `;
-          })
-          .join("")}
-      </ul>
-    `;
-  } catch (err) {
-    console.error("FatSecret search error:", err);
-    resultsDiv.textContent = "Error searching FatSecret. Check console.";
   }
-}
 
-if (button && input) {
   button.addEventListener("click", handleSearchClick);
-}
+});
+//   document.addEventListener("click", () => {
+//   const titleInput = document.getElementById("d]");
+//   const calInput   = document.getElementById("dCal");
+// //   const protInput  = document.getElementById("diary-protein");
+// //   const carbsInput = document.getElementById("diary-carbs");
+// //   const fatInput   = document.getElementById("diary-fat");
+// //   }
