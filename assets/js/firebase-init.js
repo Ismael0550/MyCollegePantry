@@ -17,3 +17,7 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db   = getFirestore(app);
+
+cd functions
+npm install openai
+firebase functions:secrets:set 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
