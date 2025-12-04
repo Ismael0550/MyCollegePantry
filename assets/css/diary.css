@@ -131,6 +131,27 @@ button.danger:hover {
   background: #ff1f1f;
 }
 
+.btn-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.btn-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.small-dup {
+  padding: 6px 10px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+
 /* Totals footer */
 #totals {
   margin-top: 10px;
