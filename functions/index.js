@@ -3,6 +3,13 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const fetch = require("node-fetch");
+const admin = require("firebase-admin");
+const OpenAI = require("openai");
+
+// Initializing Firebase Admin
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 // Simple test function
 exports.helloTest = onCall((request) => {
@@ -12,6 +19,7 @@ exports.helloTest = onCall((request) => {
 // Define secrets (backed by Secret Manager)
 const FATSECRET_CLIENT_ID = defineSecret("FATSECRET_CLIENT_ID");
 const FATSECRET_CLIENT_SECRET = defineSecret("FATSECRET_CLIENT_SECRET");
+const OPEN_AI_KEY = defineSecret("OPENAI_API_KEY");
 
 // FatSecret search function
 exports.fatsecretSearch = onCall(
@@ -154,6 +162,75 @@ exports.fatsecretSearch = onCall(
       console.error("fatsecretSearch error:", err);
       if (err instanceof HttpsError) throw err;
       throw new HttpsError("unknown", "Unexpected server error: " + String(err));
+    }
+  }
+);
+
+// AI Pantry Chatbot
+exports.aiPantryChat = onCall(
+  { secrets: [OPENAI_API_KEY] },
+  async (request) => {
+    const uid =request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "You must be signed in to use the AI assistant.");
+    }
+
+    const { message } = request.data || {};
+    if (!message || typeof message !== "string") {
+      throw new HttpsError("invalid-argument", "You must provide a 'message' string.");
+    }
+
+    try { 
+      const pantrySnap = await db
+      .collection("users")
+      .doc(uid)
+      .collection("pantry")
+      .get();
+
+    const pantryItems = pantrySnap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    const pantryText = pantryItems
+      .map(
+        (i) => 
+          `${i.name} - ${i.quantity} ${i.unit || ""} [${i.category || "uncategorized"}]` + 
+          ( i.expiresOn ? ` (exp: ${i.expiresOn})` : "")
+        )
+      .join("\n";
+        
+    const client = new OpenAI({
+        apiKey: OPENAI_API_KEY.value(),  
+      });
+
+      const instructions = `
+You are a friendly college pantry assistant.
+Use the pantry items to suggest cheap, simple meals.
+Prefer 2-3 ideas and mention rough calories/macros.
+If the pantry is empty, suggest low-cost basics they could buy.
+`;
+
+      const userPrompt = `
+User pantry:
+${pantryText || "(Pantry appears to be empty.)"}
+
+User message:
+${message}
+`;
+
+      const aiResponse = await client.responses.create({
+        model: "gpt-4o-mini",
+        instructions,
+        input: userPrompt,
+      });
+
+      const replyText = aiResponse.output_text || "Sorry, I couldn't generate an answer.";
+
+      return { reply: replyText };
+    } catch (err) {
+      console.error("aiPantryChat error:", err);
+      throw new HttpsError("internal", "AI pantry assistant failed: " + String(err));
     }
   }
 );
