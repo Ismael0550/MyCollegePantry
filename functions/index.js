@@ -10,6 +10,7 @@ const OpenAI = require("openai");
 if (!admin.apps.length) {
   admin.initializeApp();
 }
+const db = admin.firestore();
 
 // Simple test function
 exports.helloTest = onCall((request) => {
@@ -19,7 +20,7 @@ exports.helloTest = onCall((request) => {
 // Define secrets (backed by Secret Manager)
 const FATSECRET_CLIENT_ID = defineSecret("FATSECRET_CLIENT_ID");
 const FATSECRET_CLIENT_SECRET = defineSecret("FATSECRET_CLIENT_SECRET");
-const OPEN_AI_KEY = defineSecret("OPENAI_API_KEY");
+const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 
 // FatSecret search function
 exports.fatsecretSearch = onCall(
@@ -198,7 +199,7 @@ exports.aiPantryChat = onCall(
           `${i.name} - ${i.quantity} ${i.unit || ""} [${i.category || "uncategorized"}]` + 
           ( i.expiresOn ? ` (exp: ${i.expiresOn})` : "")
         )
-      .join("\n";
+      .join("\n");
         
     const client = new OpenAI({
         apiKey: OPENAI_API_KEY.value(),  
