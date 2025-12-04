@@ -2,9 +2,9 @@
 import { db, auth } from "/assets/js/firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
-  collection, addDoc, serverTimestamp,
+  collection, addDoc, getDoc, serverTimestamp,
   query, where, orderBy, onSnapshot,
-  doc, deleteDoc
+  doc, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 onAuthStateChanged(auth, user => {
@@ -92,6 +92,8 @@ function watchDiary(dayISO) {
           ${m.notes ? `<div class="muted" style="margin-top:4px;">"${esc(m.notes)}"</div>` : ""}
         </div>
 
+        <div class="btn-col">
+        <button class="btn solid small-dup" data-dup="${m.id}">+</button>
         <button class="danger" data-id="${m.id}">Delete</button>
       `;
       list.appendChild(li);
@@ -145,4 +147,22 @@ list.addEventListener("click", async e => {
   const btn = e.target.closest("button[data-id]");
   if (!btn) return;
   await deleteDoc(doc(db, "diaryMeals", btn.dataset.id));
+});
+
+// add 
+list.addEventListener("click", async e => {
+  const dupBtn = e.target.closest("button[data-dup]");
+  if (!dupBtn) return;
+
+  const id = dupBtn.dataset.dup;
+  const ref = doc(db, "diaryMeals", id);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+  delete data.createdAt;
+  data.createdAt = serverTimestamp();
+
+  await addDoc(collection(db, "diaryMeals"), data);
 });
