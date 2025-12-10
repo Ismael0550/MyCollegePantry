@@ -71,14 +71,16 @@ textarea{resize:none;min-height:44px;max-height:180px;padding:12px;border:1px so
         <div class="row">
           <div class="progress"><div class="bar" style="width:40%"></div></div>
        
-      <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+    <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
       <span id="userName" style="font-size:14px; opacity:0.8;"></span>
       <button class="btn" id="loginBtn">Sign in with Google</button>
       <button class="btn" id="logoutBtn" style="display:none;">Sign out</button>
-
-      </div>
-        <script src="../../js/app.js"></script>
-      </header>
+    </div>
+  </div>
+        
+        
+  <script src="../../js/app.js"></script>
+</header>
 <div class="app">
   <aside class="sidebar2">
     <header>Conversations</header>
@@ -129,7 +131,6 @@ textarea{resize:none;min-height:44px;max-height:180px;padding:12px;border:1px so
   import { auth as appAuth } from "/assets/js/firebase-init.js";
   import {
     onAuthStateChanged,
-    signInAnonymously,
     GoogleAuthProvider,
     signInWithPopup,
     signOut,
@@ -383,5 +384,6 @@ document.getElementById('newChatBtn').click();
 </script>
 </body>
 </html>
+
 
 
