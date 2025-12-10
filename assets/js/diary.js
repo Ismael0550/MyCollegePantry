@@ -1,10 +1,16 @@
 // /assets/js/diary.js
-import { db } from "/assets/js/firebase-init.js";
+import { db, auth } from "/assets/js/firebase-init.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
-  collection, addDoc, serverTimestamp,
+  collection, addDoc, getDoc, serverTimestamp,
   query, where, orderBy, onSnapshot,
-  doc, deleteDoc
+  doc, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+onAuthStateChanged(auth, user => {
+  if (!user) return;
+  watchDiary(document.getElementById("dDate").value);
+});
 
 // helpers
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -45,8 +51,12 @@ let stopWatching = null;
 function watchDiary(dayISO) {
   if (typeof stopWatching === "function") stopWatching();
 
+  const user = auth.currentUser;
+  if (!user) return;
+
   const q = query(
     collection(db, "diaryMeals"),
+    where("userId", "==", user.uid), 
     where("date", "==", dayISO)
   );
 
@@ -75,22 +85,6 @@ function watchDiary(dayISO) {
 
           <div>${esc(m.title || '')}</div>
 
-          ${Array.isArray(m.ingredients) && m.ingredients.length ? `
-            <details class="muted" style="margin-top:4px;">
-              <summary style="cursor:pointer;">Ingredients (${m.ingredients.length})</summary>
-              <ul style="margin:6px 0 0 14px; padding:0; list-style:disc;">
-                ${m.ingredients.map(i =>
-                  `<li>${esc(i.name || '')} — ${i.qty ?? 0} ${esc(i.unit || '')}</li>`
-                ).join('')}
-              </ul>
-            </details>
-          ` : `
-            <details class="muted" style="margin-top:4px;">
-              <summary style="cursor:pointer;">Ingredients (0)</summary>
-              <div style="margin:6px 0 0 14px;">No ingredients saved for this meal.</div>
-            </details>
-          `}
-
           <div class="muted" style="margin-top:6px;">
             ${m.calories} kcal · P ${m.protein} · C ${m.carbs} · F ${m.fat}
           </div>
@@ -98,6 +92,8 @@ function watchDiary(dayISO) {
           ${m.notes ? `<div class="muted" style="margin-top:4px;">"${esc(m.notes)}"</div>` : ""}
         </div>
 
+        <div class="btn-col">
+        <button class="btn solid small-dup" data-dup="${m.id}">+</button>
         <button class="danger" data-id="${m.id}">Delete</button>
       `;
       list.appendChild(li);
@@ -121,18 +117,23 @@ picker.addEventListener("change", e => {
 
 form.addEventListener("submit", async e => {
   e.preventDefault();
+
+  const user = auth.currentUser;
+  if (!user) return;
+
   const payload = {
     date: document.getElementById("dDate").value,
     mealType: document.getElementById("dMeal").value,
-    title: document.getElementById("dTitle").value.trim(),
+    title: document.getElementById("fatsecret-input").value.trim(),
     calories: toNum(document.getElementById("dCal").value),
     protein:  toNum(document.getElementById("dPro").value),
     carbs:    toNum(document.getElementById("dCar").value),
     fat:      toNum(document.getElementById("dFat").value),
     ingredients: parseIngredients(document.getElementById("dIngr")?.value || ""),
     notes:    document.getElementById("dNotes").value.trim(),
-    createdAt: serverTimestamp()
-    // userId later
+    createdAt: serverTimestamp(),
+    userId: user.uid
+
   };
   if (!payload.title) return;
 
@@ -146,4 +147,22 @@ list.addEventListener("click", async e => {
   const btn = e.target.closest("button[data-id]");
   if (!btn) return;
   await deleteDoc(doc(db, "diaryMeals", btn.dataset.id));
+});
+
+// add 
+list.addEventListener("click", async e => {
+  const dupBtn = e.target.closest("button[data-dup]");
+  if (!dupBtn) return;
+
+  const id = dupBtn.dataset.dup;
+  const ref = doc(db, "diaryMeals", id);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+  delete data.createdAt;
+  data.createdAt = serverTimestamp();
+
+  await addDoc(collection(db, "diaryMeals"), data);
 });

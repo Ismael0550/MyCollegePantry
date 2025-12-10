@@ -70,9 +70,17 @@ textarea{resize:none;min-height:44px;max-height:180px;padding:12px;border:1px so
         <button data-menu class="menu-btn">☰ Menu</button>
         <div class="row">
           <div class="progress"><div class="bar" style="width:40%"></div></div>
-        </div>
-        <script src="../../js/app.js"></script>
-      </header>
+       
+    <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+      <span id="userName" style="font-size:14px; opacity:0.8;"></span>
+      <button class="btn" id="loginBtn">Sign in with Google</button>
+      <button class="btn" id="logoutBtn" style="display:none;">Sign out</button>
+    </div>
+  </div>
+        
+        
+  <script src="../../js/app.js"></script>
+</header>
 <div class="app">
   <aside class="sidebar2">
     <header>Conversations</header>
@@ -119,180 +127,263 @@ textarea{resize:none;min-height:44px;max-height:180px;padding:12px;border:1px so
   </aside>
 </div>
 
-<script>
-/* Fake auth + Firestore stubs: replace with your real init */
-const auth = { currentUser: { uid: 'demo' } };
+<script type="module">
+  import { auth as appAuth } from "/assets/js/firebase-init.js";
+  import {
+    onAuthStateChanged,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut,
+  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+  import {
+    getFunctions,
+    httpsCallable,
+  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-functions.js";
 
-/* Minimal in-memory store to sketch behavior */
-let state = { chatId: null, chats: [], messages: {}, pantry: [] };
+  const aiAuth = appAuth;
+  const provider = new GoogleAuthProvider();
+  const functions = getFunctions();
+  const aiPantryChat = httpsCallable(functions, "aiPantryChat");
 
-const el = (sel)=>document.querySelector(sel);
-const thread = el('#thread');
-const chatList = el('#chatList');
+  // Grab buttons + label
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const userNameEl = document.getElementById("userName");
 
-function addMsg(role, content, extra={}){
-  const msg = document.createElement('div');
-  msg.className = `msg ${role}`;
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  meta.textContent = role === 'user' ? 'You' : role === 'assistant' ? 'Pantry AI' : 'System';
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble' + (role==='tool'?' tool':'');
-  bubble.innerHTML = content;
-  const actions = document.createElement('div');
-  actions.className = 'msg-actions';
-  if (role === 'assistant'){
-    actions.innerHTML = `
-      <button class="btn" data-act="copy">Copy</button>
-      <button class="btn" data-act="saveRecipe">Save recipe</button>
-      <button class="btn" data-act="toPlan">Add to plan</button>
-      <button class="btn" data-act="toList">Shopping list</button>
-      <button class="btn" data-act="retry">Retry</button>
-    `;
-  }
-  msg.append(meta,bubble,actions);
-  thread.appendChild(msg);
-  thread.scrollTop = thread.scrollHeight;
-  return {msg,bubble};
-}
-
-/* Typing indicator */
-function addTyping(){
-  const wrap = document.createElement('div');
-  wrap.className = 'msg assistant';
-  wrap.innerHTML = `<div class="meta">Pantry AI</div><div class="bubble"><div class="typing"></div></div>`;
-  thread.appendChild(wrap);
-  thread.scrollTop = thread.scrollHeight;
-  return wrap;
-}
-
-/* Compose + send */
-el('#composer').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const txt = el('#prompt').value.trim();
-  if (!txt) return;
-  addMsg('user', escapeHtml(txt));
-  el('#prompt').value = '';
-
-  const typing = addTyping();
-
-  // Build context snapshot (summarize pantry for the model)
-  const pantryBrief = summarizePantryForPrompt(state.pantry);
-
-  // Call your backend route that talks to the model
-  // Replace with real endpoint (Cloud Functions / App Engine / whatever)
+// When user clicks "Sign in with Google"
+loginBtn.addEventListener("click", async () => {
   try {
-    const res = await fetch('/api/aiChat', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        chatId: state.chatId,
-        userId: auth.currentUser.uid,
-        message: txt,
-        pantryBrief
-      })
-    });
+    await signInWithPopup(aiAuth, provider);
+  } catch (err) {
+    console.error("Google sign-in failed:", err);
+    alert("Google sign-in failed: " + err.message);
+  }
+});
 
-    // Stream response if your endpoint supports it; fallback to text
-    if (res.body && window.ReadableStream){
-      typing.remove();
-      const { bubble } = addMsg('assistant',''); // empty then stream in
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let done, chunk;
-      while(({done, value:chunk} = await reader.read()) && !done){
-        bubble.innerHTML += escapeHtml(decoder.decode(chunk));
-        thread.scrollTop = thread.scrollHeight;
-      }
-    } else {
-      const text = await res.text();
-      typing.remove();
-      addMsg('assistant', escapeHtml(text));
+// When user clicks "Sign out"
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await signOut(aiAuth);
+  } catch (err) {
+    console.error("Sign out failed:", err);
+  }
+});
+
+// Keep UI in sync with auth state
+onAuthStateChanged(aiAuth, async (user) => {
+  if (user) {
+    // Show name/email, show logout button
+    userNameEl.textContent = user.displayName || user.email || "Signed in";
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "inline-block";
+    console.log("AI chat signed in as", user.uid);
+  } else {
+    // No user – show login button
+    userNameEl.textContent = "";
+    loginBtn.style.display = "inline-block";
+    logoutBtn.style.display = "none";
+   
+  }
+});
+
+  /* Minimal in-memory store to sketch behavior */
+  let state = { chatId: null, chats: [], messages: {}, pantry: [] };
+
+  const el = (sel) => document.querySelector(sel);
+  const thread = el("#thread");
+  const chatList = el("#chatList");
+
+  function addMsg(role, content, extra = {}) {
+    const msg = document.createElement("div");
+    msg.className = `msg ${role}`;
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent =
+      role === "user" ? "You" : role === "assistant" ? "Pantry AI" : "System";
+    const bubble = document.createElement("div");
+    bubble.className = "bubble" + (role === "tool" ? " tool" : "");
+    bubble.innerHTML = content;
+    const actions = document.createElement("div");
+    actions.className = "msg-actions";
+    if (role === "assistant") {
+      actions.innerHTML = `
+        <button class="btn" data-act="copy">Copy</button>
+        <button class="btn" data-act="saveRecipe">Save recipe</button>
+        <button class="btn" data-act="toPlan">Add to plan</button>
+        <button class="btn" data-act="toList">Shopping list</button>
+        <button class="btn" data-act="retry">Retry</button>
+      `;
     }
-  } catch(err){
-    typing.remove();
-    addMsg('assistant', `Sorry, the kitchen is on fire: ${escapeHtml(err.message)}`);
-  }
-});
-
-/* Hint chips just drop text into the textarea */
-document.getElementById('hints').addEventListener('click', (e)=>{
-  if (!e.target.classList.contains('hint')) return;
-  el('#prompt').value = e.target.textContent;
-  el('#prompt').focus();
-});
-
-/* Basic conversations list (placeholder) */
-document.getElementById('newChatBtn').addEventListener('click', ()=>{
-  const id = 'chat_'+Date.now();
-  state.chatId = id;
-  state.chats.unshift({id, title:'New chat'});
-  renderChats();
-  el('#chatTitle').textContent = 'New chat';
-  thread.innerHTML = '';
-});
-function renderChats(){
-  chatList.innerHTML = '';
-  for (const c of state.chats){
-    const div = document.createElement('div');
-    div.className = 'chat-row'+(c.id===state.chatId?' active':'');
-    div.textContent = c.title;
-    div.onclick = ()=>{
-      state.chatId = c.id;
-      renderChats();
-      el('#chatTitle').textContent = c.title;
-      // load messages from Firestore here
-      thread.innerHTML = '';
-    };
-    chatList.appendChild(div);
-  }
-}
-
-/* Context panel population (feed from Firestore) */
-function updateContext(){
-  const now = Date.now(), week = 7*24*60*60*1000;
-  const soon = state.pantry.filter(p => p.expiresOn && new Date(p.expiresOn).getTime() - now <= week)
-                           .sort((a,b)=>new Date(a.expiresOn)-new Date(b.expiresOn))
-                           .slice(0,6);
-  document.getElementById('ctxItems').textContent = state.pantry.length;
-  document.getElementById('ctxSoon').textContent = soon.length;
-  document.getElementById('ctxCals').textContent = 0; // plug in from diary later
-  const list = document.getElementById('ctxExpiring');
-  list.innerHTML = '';
-  for (const it of soon){
-    const row = document.createElement('div');
-    row.className='item';
-    row.innerHTML = `<span>${escapeHtml(it.name)} <span class="badge">${escapeHtml(it.location)}</span></span>
-                     <span class="badge">${new Date(it.expiresOn).toLocaleDateString()}</span>`;
-    list.appendChild(row);
+    msg.append(meta, bubble, actions);
+    thread.appendChild(msg);
+    thread.scrollTop = thread.scrollHeight;
+    return { msg, bubble };
   }
 
-  const quick = document.getElementById('ctxQuick');
-  quick.innerHTML = '';
-  for (const it of state.pantry.slice(0,10)){
-    const chip = document.createElement('div');
-    chip.className = 'item';
-    chip.innerHTML = `<span>${escapeHtml(it.name)}</span><button class="btn" data-ing="${escapeHtml(it.name)}">Use</button>`;
-    chip.querySelector('button').onclick = ()=>{
-      const t = el('#prompt');
-      t.value = (t.value ? t.value + ' ' : '') + it.name;
-      t.focus();
-    };
-    quick.appendChild(chip);
+  /* Typing indicator */
+  function addTyping() {
+    const wrap = document.createElement("div");
+    wrap.className = "msg assistant";
+    wrap.innerHTML =
+      `<div class="meta">Pantry AI</div>` +
+      `<div class="bubble"><div class="typing"></div></div>`;
+    thread.appendChild(wrap);
+    thread.scrollTop = thread.scrollHeight;
+    return wrap;
   }
-}
 
-function summarizePantryForPrompt(items){
-  const top = items.slice(0,40).map(x =>
-    `${x.name} x${x.qty}${x.unit?(' '+x.unit):''}${x.expiresOn?(' exp:'+x.expiresOn):''}`
-  ).join('; ');
-  return `Available: ${top || 'none'}. Prefer items expiring within 7 days. If a recipe needs missing items, produce a compact shopping list. Output steps, time, calories, and macros per serving.`;
-}
+  /* Form submit handler */
+  el("#composer").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const txt = el("#prompt").value.trim();
+    if (!txt) return;
 
-function escapeHtml(s){return s?.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))||''}
+    if (!aiAuth.currentUser) {
+      alert("Signing you in… please try again in a second.");
+      return;
+    }
 
+    addMsg("user", escapeHtml(txt));
+    el("#prompt").value = "";
+
+    const typing = addTyping();
+
+    const pantryBrief = summarizePantryForPrompt(state.pantry);
+
+    try {
+      const result = await aiPantryChat({
+        chatId: state.chatId,
+        message: txt,
+        pantryBrief,
+      });
+
+      typing.remove();
+      const reply =
+        (result.data && result.data.reply) ||
+        "Sorry, I couldn't generate an answer.";
+      addMsg("assistant", escapeHtml(reply));
+    } catch (err) {
+      console.error(err);
+      typing.remove();
+      addMsg(
+        "assistant",
+        `Sorry, the AI pantry assistant failed: ${escapeHtml(err.message)}`
+      );
+    }
+  });
+
+  /* Hint chips just drop text into the textarea */
+  document.getElementById("hints").addEventListener("click", (e) => {
+    if (!e.target.classList.contains("hint")) return;
+    el("#prompt").value = e.target.textContent;
+    el("#prompt").focus();
+  });
+
+  /* Basic conversations list (placeholder) */
+  document.getElementById("newChatBtn").addEventListener("click", () => {
+    const id = "chat_" + Date.now();
+    state.chatId = id;
+    state.chats.unshift({ id, title: "New chat" });
+    renderChats();
+    el("#chatTitle").textContent = "New chat";
+    thread.innerHTML = "";
+  });
+
+  function renderChats() {
+    chatList.innerHTML = "";
+    for (const c of state.chats) {
+      const div = document.createElement("div");
+      div.className = "chat-row" + (c.id === state.chatId ? " active" : "");
+      div.textContent = c.title;
+      div.onclick = () => {
+        state.chatId = c.id;
+        renderChats();
+        el("#chatTitle").textContent = c.title;
+        // TODO: load messages from Firestore for this chat
+        thread.innerHTML = "";
+      };
+      chatList.appendChild(div);
+    }
+  }
+
+  /* Context panel population (feed from Firestore later) */
+  function updateContext() {
+    const now = Date.now();
+    const week = 7 * 24 * 60 * 60 * 1000;
+    const soon = state.pantry
+      .filter(
+        (p) => p.expiresOn && new Date(p.expiresOn).getTime() - now <= week
+      )
+      .sort((a, b) => new Date(a.expiresOn) - new Date(b.expiresOn))
+      .slice(0, 6);
+
+    document.getElementById("ctxItems").textContent = state.pantry.length;
+    document.getElementById("ctxSoon").textContent = soon.length;
+
+    const list = document.getElementById("ctxExpiring");
+    list.innerHTML = "";
+    for (const it of soon) {
+      const row = document.createElement("div");
+      row.className = "item";
+      row.innerHTML =
+        `<span>${escapeHtml(it.name)}</span>` +
+        `<span class="badge">${escapeHtml(it.location || "")}</span>` +
+        `<span class="badge">${new Date(
+          it.expiresOn
+        ).toLocaleDateString()}</span>`;
+      list.appendChild(row);
+    }
+
+    const quick = document.getElementById("ctxQuick");
+    quick.innerHTML = "";
+    for (const it of state.pantry.slice(0, 10)) {
+      const chip = document.createElement("div");
+      chip.className = "item";
+      chip.innerHTML =
+        `<span>${escapeHtml(it.name)}</span>` +
+        `<button class="btn" data-ing="${escapeHtml(it.name)}">Use</button>`;
+      chip.querySelector("button").onclick = () => {
+        const t = el("#prompt");
+        t.value = (t.value ? t.value + " " : "") + it.name;
+        t.focus();
+      };
+      quick.appendChild(chip);
+    }
+  }
+
+  function summarizePantryForPrompt(items) {
+    const top = items
+      .slice(0, 40)
+      .map(
+        (x) =>
+          `${x.name} x${x.qty}${x.unit ? " " + x.unit : ""}${
+            x.expiresOn ? " exp:" + x.expiresOn : ""
+          }`
+      )
+      .join("; ");
+    return `Available: ${
+      top || "none"
+    }. Prefer items expiring within 7 days. If a recipe needs missing items, suggest an inexpensive shopping list. Output steps, time, calories, and macros per serving.`;
+  }
+
+  function escapeHtml(s) {
+    return (
+      s?.replace(/[&<>"']/g, (c) => {
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;",
+        }[c];
+      }) || ""
+    );
+  }
 /* On load: start a chat */
 document.getElementById('newChatBtn').click();
 </script>
 </body>
 </html>
+
+
+
